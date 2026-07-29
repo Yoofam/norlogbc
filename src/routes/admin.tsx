@@ -80,16 +80,22 @@ function Admin() {
   const tryUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
-    const res = await login({ data: { pin } });
-    setBusy(false);
-    setPin("");
-    if (!res.ok) {
-      toast.error(res.error ?? "Incorrect PIN");
-      return;
+    try {
+      const res = await login({ data: { pin } });
+      setPin("");
+      if (!res.ok) {
+        toast.error(res.error ?? "Incorrect PIN");
+        return;
+      }
+      setUnlocked(true);
+      await load();
+      toast.success("Welcome back.");
+    } catch (error) {
+      console.error(error);
+      toast.error("Could not unlock admin. Please try again.");
+    } finally {
+      setBusy(false);
     }
-    setUnlocked(true);
-    await load();
-    toast.success("Welcome back.");
   };
 
   const lock = async () => {
