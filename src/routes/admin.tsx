@@ -66,9 +66,14 @@ function Admin() {
 
   useEffect(() => {
     void (async () => {
-      const s = await status();
-      setUnlocked(s.admin);
-      if (s.admin) await load();
+      try {
+        const s = await status();
+        setUnlocked(s.admin);
+        if (s.admin) await load();
+      } catch (error) {
+        console.error(error);
+        setUnlocked(false);
+      }
     })();
   }, [status, load]);
 
