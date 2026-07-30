@@ -72,5 +72,6 @@ export async function processLogoImage(file: File): Promise<string> {
   } catch {
     // cross-origin / tainted canvas — keep the untouched render
   }
-  return canvas.toDataURL("image/png");
+
+  return canvas.toDataURL("image/webp", 0.82);
 }

@@ -32,7 +32,7 @@ export const bookingInputSchema = z.object({
 const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Use a #rrggbb colour");
 const dataUrl = z
   .string()
-  .max(3_000_000)
+  .max(5_000_000)
   .refine((v) => v === "" || v.startsWith("data:image/") || v.startsWith("https://"), "Invalid image");
 
 export const settingsSchema = z.object({
