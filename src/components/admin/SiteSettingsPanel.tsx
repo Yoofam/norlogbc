@@ -105,7 +105,14 @@ export function SiteSettingsPanel({
     }
     setSaving(true);
     try {
-      await persist({ data: draft });
+      const res = await persist({ data: draft });
+
+      if (res && typeof res === "object" && "ok" in res && !res.ok) {
+        const message = (res as { error?: string }).error || "Could not save — check the fields or try a smaller logo image.";
+        toast.error(message);
+        return;
+      }
+
       toast.success("Site settings saved for every visitor.");
       try {
         await onSaved();
@@ -115,12 +122,13 @@ export function SiteSettingsPanel({
       }
     } catch (error) {
       console.error("Site settings save failed", error);
-      const message =
-        error instanceof Error
-          ? error.message
-          : typeof error === "string"
-          ? error
-          : "Could not save — check the fields or try a smaller logo image.";
+      let message = "Could not save — check the fields or try a smaller logo image.";
+      if (error && typeof error === "object") {
+        const errObj = error as { message?: string; status?: number; error?: string };
+        message = errObj.message || errObj.error || message;
+      } else if (typeof error === "string") {
+        message = error;
+      }
       toast.error(
         message.includes("Missing Supabase environment variable")
           ? "Admin backend missing Supabase service role key. Add SUPABASE_SERVICE_ROLE_KEY."
