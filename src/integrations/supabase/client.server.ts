@@ -42,7 +42,7 @@ function isNewSupabaseApiKey(value: string): boolean {
 }
 
 function createSupabaseFetch(supabaseKey: string): typeof fetch {
-  const isOpaqueKey = isNewSupabaseApiKey(supabaseKey);
+  const isPublishableKey = supabaseKey.startsWith('sb_publishable_');
 
   return (input, init) => {
     const headers = new Headers(
@@ -53,12 +53,11 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
       new Headers(init.headers).forEach((value, key) => headers.set(key, value));
     }
 
-    if (isOpaqueKey && headers.get('Authorization') === `Bearer ${supabaseKey}`) {
-      headers.delete('Authorization');
-    }
-
-    // Always include the Supabase key as apikey to satisfy API validation.
     headers.set('apikey', supabaseKey);
+
+    if (!isPublishableKey) {
+      headers.set('Authorization', `Bearer ${supabaseKey}`);
+    }
 
     return fetch(input, { ...init, headers });
   };
