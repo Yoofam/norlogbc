@@ -16,7 +16,7 @@ export const getSiteData = createServerFn({ method: "GET" }).handler(async () =>
 });
 
 export const submitQuoteRequest = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => quoteInputSchema.parse(data))
+  .validator((data: unknown) => quoteInputSchema.parse(data))
   .handler(async ({ data }) => {
     const db = await admin();
     const { data: row, error } = await db
@@ -49,7 +49,7 @@ export const submitQuoteRequest = createServerFn({ method: "POST" })
   });
 
 export const submitBookingRequest = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => bookingInputSchema.parse(data))
+  .validator((data: unknown) => bookingInputSchema.parse(data))
   .handler(async ({ data }) => {
     const db = await admin();
     const { data: row, error } = await db

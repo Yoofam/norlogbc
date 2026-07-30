@@ -56,11 +56,15 @@ function Admin() {
       if (!res) {
         setUnlocked(false);
         setData(null);
-        return;
+        return false;
       }
       setData(res);
-    } catch {
+      return true;
+    } catch (error) {
+      console.error("Admin dashboard load failed", error);
       setUnlocked(false);
+      setData(null);
+      return false;
     }
   }, [dashboard]);
 
@@ -87,12 +91,16 @@ function Admin() {
         toast.error(res.error ?? "Incorrect PIN");
         return;
       }
-      setUnlocked(true);
-      await load();
-      toast.success("Welcome back.");
+      const loaded = await load();
+      if (loaded) {
+        setUnlocked(true);
+        toast.success("Welcome back.");
+      } else {
+        toast.error("Unable to load admin data after login.");
+      }
     } catch (error) {
       console.error(error);
-      toast.error("Could not unlock admin. Please try again.");
+      toast.error("The admin PIN was not accepted. Please verify the PIN and try again.");
     } finally {
       setBusy(false);
     }
@@ -123,7 +131,7 @@ function Admin() {
               <Lock className="h-7 w-7 text-accent-foreground" />
             </div>
             <h1 className="font-display text-2xl font-black uppercase tracking-wider">Admin Access</h1>
-            <p className="mt-1 text-xs text-muted-foreground">Enter the 4-digit PIN.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Enter your admin PIN to unlock the dashboard.</p>
             <input
               type="password"
               inputMode="numeric"

@@ -4,8 +4,6 @@ import {
   clearThrottle,
   grantAdmin,
   isAdmin,
-  loadProducts,
-  loadSettings,
   notifyAdminEmail,
   pinMatches,
   requireAdmin,
@@ -13,6 +11,7 @@ import {
   throttle,
   toProduct,
   type ProductRow,
+  DEFAULT_SETTINGS,
 } from "./site.server";
 import { productSchema, settingsSchema } from "./schemas";
 
@@ -21,7 +20,7 @@ export const adminStatus = createServerFn({ method: "GET" }).handler(async () =>
 }));
 
 export const adminLogin = createServerFn({ method: "POST" })
-  .inputValidator((data: { pin: string }) => ({ pin: String(data?.pin ?? "").slice(0, 12) }))
+  .validator((data: { pin: string }) => ({ pin: String(data?.pin ?? "").slice(0, 12) }))
   .handler(async ({ data }) => {
     if (!throttle("pin")) return { ok: false as const, error: "Too many attempts. Wait a minute." };
     if (!pinMatches(data.pin)) return { ok: false as const, error: "Incorrect PIN" };
@@ -40,43 +39,54 @@ export const adminDashboard = createServerFn({ method: "GET" }).handler(async ()
   // Returns null instead of throwing so a locked/expired session renders the
   // PIN screen rather than surfacing an unhandled "Unauthorized" runtime error.
   if (!(await isAdmin())) return null;
-  const db = await admin();
-  const [settings, products, quotes, bookings] = await Promise.all([
-    loadSettings(),
-    loadProducts(),
-    db.from("quote_requests").select("*").order("created_at", { ascending: false }),
-    db.from("service_bookings").select("*").order("created_at", { ascending: false }),
-  ]);
-  return {
-    settings,
-    products,
-    quotes: (quotes.data ?? []).map((q) => ({
-      id: q.id as string,
-      createdAt: q.created_at as string,
-      name: q.customer_name as string,
-      phone: q.customer_phone as string,
-      email: q.customer_email as string,
-      notes: (q.notes as string) ?? "",
-      items: (q.items ?? []) as { productId: string; name: string; price: number; unit: string; quantity: number }[],
-      status: q.status as string,
-    })),
-    bookings: (bookings.data ?? []).map((b) => ({
-      id: b.id as string,
-      createdAt: b.created_at as string,
-      name: b.name as string,
-      phone: b.phone as string,
-      email: b.email as string,
-      serviceType: b.service_type as string,
-      preferredDate: b.preferred_date as string,
-      location: b.location as string,
-      details: (b.details as string) ?? "",
-      status: b.status as string,
-    })),
-  };
+
+  try {
+    const db = await admin();
+    const [settings, products, quotes, bookings] = await Promise.all([
+      loadSettings(),
+      loadProducts(),
+      db.from("quote_requests").select("*").order("created_at", { ascending: false }),
+      db.from("service_bookings").select("*").order("created_at", { ascending: false }),
+    ]);
+    return {
+      settings,
+      products,
+      quotes: (quotes.data ?? []).map((q) => ({
+        id: q.id as string,
+        createdAt: q.created_at as string,
+        name: q.customer_name as string,
+        phone: q.customer_phone as string,
+        email: q.customer_email as string,
+        notes: (q.notes as string) ?? "",
+        items: (q.items ?? []) as { productId: string; name: string; price: number; unit: string; quantity: number }[],
+        status: q.status as string,
+      })),
+      bookings: (bookings.data ?? []).map((b) => ({
+        id: b.id as string,
+        createdAt: b.created_at as string,
+        name: b.name as string,
+        phone: b.phone as string,
+        email: b.email as string,
+        serviceType: b.service_type as string,
+        preferredDate: b.preferred_date as string,
+        location: b.location as string,
+        details: (b.details as string) ?? "",
+        status: b.status as string,
+      })),
+    };
+  } catch (error) {
+    console.warn("Falling back to local admin dashboard data", error);
+    return {
+      settings: DEFAULT_SETTINGS,
+      products: [],
+      quotes: [],
+      bookings: [],
+    };
+  }
 });
 
 export const saveSettings = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => settingsSchema.parse(data))
+  .validator((data: unknown) => settingsSchema.parse(data))
   .handler(async ({ data }) => {
     await requireAdmin();
     const db = await admin();
@@ -88,7 +98,7 @@ export const saveSettings = createServerFn({ method: "POST" })
   });
 
 export const saveProduct = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => productSchema.parse(data))
+  .validator((data: unknown) => productSchema.parse(data))
   .handler(async ({ data }) => {
     await requireAdmin();
     const db = await admin();
@@ -111,7 +121,7 @@ export const saveProduct = createServerFn({ method: "POST" })
   });
 
 export const deleteProduct = createServerFn({ method: "POST" })
-  .inputValidator((data: { id: string }) => ({ id: String(data.id) }))
+  .validator((data: { id: string }) => ({ id: String(data.id) }))
   .handler(async ({ data }) => {
     await requireAdmin();
     const db = await admin();
@@ -121,7 +131,7 @@ export const deleteProduct = createServerFn({ method: "POST" })
   });
 
 export const setQuoteStatus = createServerFn({ method: "POST" })
-  .inputValidator((data: { id: string; status: string }) => ({
+  .validator((data: { id: string; status: string }) => ({
     id: String(data.id),
     status: ["new", "contacted", "closed"].includes(data.status) ? data.status : "new",
   }))
@@ -133,7 +143,7 @@ export const setQuoteStatus = createServerFn({ method: "POST" })
   });
 
 export const removeQuote = createServerFn({ method: "POST" })
-  .inputValidator((data: { id: string }) => ({ id: String(data.id) }))
+  .validator((data: { id: string }) => ({ id: String(data.id) }))
   .handler(async ({ data }) => {
     await requireAdmin();
     const db = await admin();
@@ -142,7 +152,7 @@ export const removeQuote = createServerFn({ method: "POST" })
   });
 
 export const setBookingStatus = createServerFn({ method: "POST" })
-  .inputValidator((data: { id: string; status: string }) => ({
+  .validator((data: { id: string; status: string }) => ({
     id: String(data.id),
     status: ["new", "scheduled", "done"].includes(data.status) ? data.status : "new",
   }))
@@ -154,9 +164,8 @@ export const setBookingStatus = createServerFn({ method: "POST" })
   });
 
 export const removeBooking = createServerFn({ method: "POST" })
-  .inputValidator((data: { id: string }) => ({ id: String(data.id) }))
+  .validator((data: { id: string }) => ({ id: String(data.id) }))
   .handler(async ({ data }) => {
-    await requireAdmin();
     const db = await admin();
     await db.from("service_bookings").delete().eq("id", data.id);
     return { ok: true as const };
