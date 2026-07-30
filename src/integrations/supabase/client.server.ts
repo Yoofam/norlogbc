@@ -2,8 +2,40 @@
 // Server-side Supabase client with service role key - bypasses RLS.
 // Use this for admin operations in server functions and server routes only.
 // For user-authenticated queries (with RLS), use the auth middleware instead.
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
+
+function readEnvFile() {
+  try {
+    const envPath = resolve(process.cwd(), '.env');
+    const raw = readFileSync(envPath, 'utf8');
+    const values: Record<string, string> = {};
+    for (const line of raw.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const separator = trimmed.indexOf('=');
+      if (separator === -1) continue;
+      const key = trimmed.slice(0, separator).trim();
+      const value = trimmed.slice(separator + 1).trim().replace(/^['"]|['"]$/g, '');
+      values[key] = value;
+    }
+    return values;
+  } catch {
+    return {} as Record<string, string>;
+  }
+}
+
+const envFileValues = readEnvFile();
+
+function getEnvValue(name: string): string {
+  const fromProcess = process.env[name];
+  if (fromProcess && fromProcess.trim()) return fromProcess.trim();
+  const fromFile = envFileValues[name];
+  if (fromFile && fromFile.trim()) return fromFile.trim();
+  return '';
+}
 
 function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith('sb_publishable_') || value.startsWith('sb_secret_');
@@ -30,8 +62,8 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 }
 
 function createSupabaseAdminClient() {
-  const SUPABASE_URL = process.env.SUPABASE_URL;
-  const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const SUPABASE_URL = getEnvValue('SUPABASE_URL');
+  const SUPABASE_SERVICE_ROLE_KEY = getEnvValue('SUPABASE_SERVICE_ROLE_KEY');
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     const missing = [
