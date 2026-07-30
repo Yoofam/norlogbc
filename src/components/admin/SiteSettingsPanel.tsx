@@ -106,10 +106,16 @@ export function SiteSettingsPanel({
     setSaving(true);
     try {
       await persist({ data: draft });
-      await onSaved();
       toast.success("Site settings saved for every visitor.");
-    } catch {
-      toast.error("Could not save — check the fields or try a smaller logo image.");
+      try {
+        await onSaved();
+      } catch (refreshError) {
+        console.error("Site settings saved but refresh failed", refreshError);
+        toast.error("Saved, but could not refresh the admin dashboard. Try reloading the page.");
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not save — check the fields or try a smaller logo image.";
+      toast.error(message || "Could not save — check the fields or try a smaller logo image.");
     } finally {
       setSaving(false);
     }
