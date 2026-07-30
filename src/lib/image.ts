@@ -2,8 +2,8 @@
 
 /** Fixed product image spec — one size that looks right on every device. */
 export const PRODUCT_IMAGE_SPEC = { width: 1200, height: 900, quality: 0.82 };
-/** Fixed logo spec — square, transparent PNG. */
-export const LOGO_IMAGE_SPEC = { size: 512 };
+/** Fixed logo spec — square, transparent WebP. */
+export const LOGO_IMAGE_SPEC = { size: 256, quality: 0.55 };
 
 function loadImage(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -44,6 +44,7 @@ export async function processProductImage(file: File): Promise<string> {
 export async function processLogoImage(file: File): Promise<string> {
   const img = await loadImage(file);
   const size = LOGO_IMAGE_SPEC.size;
+  const quality = LOGO_IMAGE_SPEC.quality;
   const canvas = document.createElement("canvas");
   canvas.width = size;
   canvas.height = size;
@@ -73,5 +74,5 @@ export async function processLogoImage(file: File): Promise<string> {
     // cross-origin / tainted canvas — keep the untouched render
   }
 
-  return canvas.toDataURL("image/webp", 0.82);
+  return canvas.toDataURL("image/webp", quality);
 }

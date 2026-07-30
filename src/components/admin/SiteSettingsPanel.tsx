@@ -114,8 +114,18 @@ export function SiteSettingsPanel({
         toast.error("Saved, but could not refresh the admin dashboard. Try reloading the page.");
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Could not save — check the fields or try a smaller logo image.";
-      toast.error(message || "Could not save — check the fields or try a smaller logo image.");
+      console.error("Site settings save failed", error);
+      const message =
+        error instanceof Error
+          ? error.message
+          : typeof error === "string"
+          ? error
+          : "Could not save — check the fields or try a smaller logo image.";
+      toast.error(
+        message.includes("Missing Supabase environment variable")
+          ? "Admin backend missing Supabase service role key. Add SUPABASE_SERVICE_ROLE_KEY."
+          : message,
+      );
     } finally {
       setSaving(false);
     }
